@@ -1,0 +1,192 @@
+{
+    "HeatTemplateVersion": "2013-05-23", 
+    "Description": "Active Directory Domain Controller with Heat", 
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            }, 
+            "m1.medium": {
+                "Arch": "64"
+            }, 
+            "m1.small": {
+                "Arch": "64"
+            }, 
+            "m1.sminy": {
+                "Arch": "64"
+            }, 
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        }, 
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    }, 
+    "Parameters": {
+        "DomainName": {
+            "AllowedPattern": "[A-Za-z0-9]+(?=[\\.\\-][a-zA-Z0-9])*\\.[a-zA-z09]+", 
+            "ConstraintDescription": "must be a valid DNS name.", 
+            "Default": "cloudbase.local", 
+            "Description": "The domain name", 
+            "MaxLength": "256", 
+            "MinLength": "3", 
+            "Type": "String"
+        }, 
+        "DomainNetbiosName": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*", 
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.", 
+            "Default": "cloudbase", 
+            "Description": "The Netbios domain name", 
+            "MaxLength": "15", 
+            "MinLength": "1", 
+            "Type": "String"
+        }, 
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny", 
+                "m1.small", 
+                "m1.medium", 
+                "m1.large", 
+                "m1.xlarge"
+            ], 
+            "ConstraintDescription": "must be a valid flavor.", 
+            "Description": "", 
+            "Type": "String"
+        }, 
+        "KeyName": {
+            "Description": "Name of an existing keypair to enable SSH access to the instances", 
+            "Type": "String"
+        }, 
+        "SafeModeAdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*", 
+            "ConstraintDescription": "Must contain letters, numbers and symbols", 
+            "Default": "Passw0rd", 
+            "Description": "The safe mode administration password", 
+            "MaxLength": "64", 
+            "MinLength": "8", 
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "must be a valid subnet id.", 
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f", 
+            "Description": "Subnet private id", 
+            "Type": "String"
+        }, 
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ], 
+            "Default": "WS12R2", 
+            "Description": "Windows version of choice", 
+            "Type": "String"
+        }
+    }, 
+    "Resources": {
+        "ADDC Controller": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                }, 
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image", 
+                        {
+                            "Ref": "WindowsVersion"
+                        }, 
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch", 
+                                {
+                                    "Ref": "Flavor"
+                                }, 
+                                "Arch"
+                            ]
+                        }
+                    ]
+                }, 
+                "key_name": {
+                    "Ref": "KeyName"
+                }, 
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ], 
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "", 
+                            [
+                                "#ps1_sysnative\n", 
+                                "$ErrorActionPreference = 'Stop'\n", 
+                                "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools\n", 
+                                "$user = [ADSI]'WinNT://./Administrator'\n", 
+                                "# Disable user\n", 
+                                "#$user.userflags = 2\n", 
+                                "#$user.SetInfo()\n", 
+                                "$user.SetPassword('", 
+                                {
+                                    "Ref": "SafeModeAdministratorPassword"
+                                }, 
+                                "')\n", 
+                                "Import-Module ADDSDeployment\n", 
+                                "$safeModePwd = (ConvertTo-SecureString '", 
+                                {
+                                    "Ref": "SafeModeAdministratorPassword"
+                                }, 
+                                "' -AsPlainText -Force)\n", 
+                                "Install-ADDSForest -DomainName '", 
+                                {
+                                    "Ref": "DomainName"
+                                }, 
+                                "' -DomainNetbiosName '", 
+                                {
+                                    "Ref": "DomainNetbiosName"
+                                }, 
+                                "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force\n"
+                            ]
+                        ]
+                    }
+                }
+            }, 
+            "Type": "OS::Nova::Server"
+        }, 
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": { "Ref" : "PublicNetId" }, 
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            }, 
+            "Type": "OS::Neutron::FloatingIP"
+        }, 
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": { "Ref" : "PrivateSubnetId"}
+                    }
+                ], 
+                "network_id": { "Ref" : "PrivateNetId"}
+            }, 
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}
