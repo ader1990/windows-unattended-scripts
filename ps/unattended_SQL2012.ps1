@@ -76,6 +76,9 @@ $dcusername = "administrator"
 $dcpassword = "FontoMarco1982!"
 $svcusername = "sqlserver"
 $svcpassword = "Sql!2014!Test"
+$features = "SQLENGINE,ADV_SSMS"
+$instancename = "MSSQLSERVER"
+$sapassword = "Sql!Server2014"
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
@@ -103,8 +106,8 @@ if (Should-Run-Step "Install")
     $PARAMS="/ACTION=install " #required
     $PARAMS+="/QS "            #quiet mode with process execution lapse
     $PARAMS+="/IACCEPTSQLSERVERLICENSETERMS=1 " #accept end user agreement
-    $PARAMS+="/INSTANCENAME=MSSQLSERVER " #instance name
-    $PARAMS+="/FEATURES=SQLENGINE,ADV_SSMS " #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature
+    $PARAMS+="/INSTANCENAME=$instancename " #instance name
+    $PARAMS+="/FEATURES=$features " #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature
     $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$dcusername " #provides system admin account
     $PARAMS+="/UpdateEnabled=1 " #enable installing updates from a specified path
     #$PARAMS+="/UpdateSource="" " #folder, UNC path of updates
@@ -114,7 +117,7 @@ if (Should-Run-Step "Install")
     $PARAMS+="/BROWSERSVCSTARTUPTYPE=Automatic "#sql server browser startup mode
     #$PARAMS+="/INSTALLSQLDATADIR="" "#sql server data directory location; default %Program Files%\Microsoft SQL Server
     $PARAMS+="/SECURITYMODE=SQL " #enables mixed mode authentication
-    $PARAMS+="/SAPWD=SqlSa2014! " #mandatory if you enable mixed mode authentication
+    $PARAMS+="/SAPWD=$sapassword " #mandatory if you enable mixed mode authentication
     #$PARAMS+="/SQLBACKUPDIR="" "#specifies an alternative backup dir
     #$PARAMS+="/SQLCOLLATION="" "#default is windows' locale
     $PARAMS+="/SQLSVCACCOUNT=$svcusername " #specifies account for sql server instance service
@@ -130,6 +133,10 @@ if (Should-Run-Step "Install")
 if (Should-Run-Step "Completing") 
 {
 	Write-Host "Completing Sql Server 2012 Installation"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0 
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value ""
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value ""
 }
 
 Wait-For-Keypress "Sql Server 2012 installation completed, press any key to exit ..."
