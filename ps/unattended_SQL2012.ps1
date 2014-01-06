@@ -1,4 +1,14 @@
-param($Step="Join")
+param($Step="Join",
+$domain = "FONTOHOME",
+$domainsuffix ="LOCAL",
+$dcusername = "administrator",
+$dcpassword = "FontoMarco1982!",
+$svcusername = "sqlserver",
+$svcpassword = "Sql!2014!Test",
+$features = "SQLENGINE,ADV_SSMS",
+$instancename = "MSSQLSERVER",
+$sapassword = "Sql!Server2014",
+$setupPath = "d:\setup.exe")
 $global:started = $FALSE
 $global:startingStep = $Step
 $global:restartKey = "Restart-And-Resume"
@@ -69,16 +79,6 @@ function DependencyInstall($url, $filename) {
         del $filename
 }
 
-$hostname = hostname
-$domain = "FONTOHOME"
-$domainsuffix ="LOCAL"
-$dcusername = "administrator"
-$dcpassword = "FontoMarco1982!"
-$svcusername = "sqlserver"
-$svcpassword = "Sql!2014!Test"
-$features = "SQLENGINE,ADV_SSMS"
-$instancename = "MSSQLSERVER"
-$sapassword = "Sql!Server2014"
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
@@ -125,7 +125,7 @@ if (Should-Run-Step "Install")
     $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 " #enables tcp protocol
-    Start-Process -Wait -FilePath "d:\setup.exe" -ArgumentList $PARAMS
+    Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
 	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Completing"
 }
