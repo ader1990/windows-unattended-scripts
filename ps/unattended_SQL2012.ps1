@@ -4,7 +4,7 @@ $domainsuffix ="LOCAL",
 $dcusername = "administrator",
 $dcpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
-$svcpassword = "Sql!2014!Test",
+$svcpassword = "!Sql2014Server",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
@@ -83,7 +83,8 @@ $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
 {
-    NET USER sqlserver "!Sql2014Server" /ADD
+    NET USER $svcusername $svcpassword /ADD
+
     $secpasswd = ConvertTo-SecureString $dcpassword -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ($dcusername , $secpasswd)
 	Write-Host "Joining Active Directory"
@@ -91,6 +92,7 @@ if (Should-Run-Step "Join")
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
@@ -103,6 +105,7 @@ if (Should-Run-Step "Join")
 if (Should-Run-Step "Install") 
 {
 	Write-Host "Installing Sql Server 2012"
+    $hostname = hostname
     $PARAMS="/ACTION=install " #required
     $PARAMS+="/QS "            #quiet mode with process execution lapse
     $PARAMS+="/IACCEPTSQLSERVERLICENSETERMS=1 " #accept end user agreement
@@ -120,11 +123,11 @@ if (Should-Run-Step "Install")
     $PARAMS+="/SAPWD=$sapassword " #mandatory if you enable mixed mode authentication
     #$PARAMS+="/SQLBACKUPDIR="" "#specifies an alternative backup dir
     #$PARAMS+="/SQLCOLLATION="" "#default is windows' locale
-    $PARAMS+="/SQLSVCACCOUNT=$svcusername " #specifies account for sql server instance service
+    $PARAMS+="/SQLSVCACCOUNT=.\$svcusername " #specifies account for sql server instance service
     $PARAMS+="/SQLSVCPASSWORD=$svcpassword " #specifies password for sql server instance service
     $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
-    $PARAMS+="/TCPENABLED=1 " #enables tcp protocol
+    $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
 	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Completing"
