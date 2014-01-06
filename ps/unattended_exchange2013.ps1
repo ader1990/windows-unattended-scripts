@@ -1,4 +1,10 @@
-param($Step="Join")
+param($Step="Join",
+$domain = "FONTOHOME",
+$domainsuffix ="LOCAL",
+$dcusername = "administrator",
+$dcpassword = "FontoMarco1982!",
+$setupPath = "d:\setup.exe")
+
 $global:started = $FALSE
 $global:startingStep = $Step
 $global:restartKey = "Restart-And-Resume"
@@ -69,11 +75,7 @@ function DependencyInstall($url, $filename) {
         del $filename
 }
 
-$hostname = hostname
-$domain = "FONTOHOME"
-$domainsuffix ="LOCAL"
-$dcusername = "administrator"
-$dcpassword = "FontoMarco1982!"
+
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
@@ -115,10 +117,10 @@ if (Should-Run-Step "Prerequisites")
 if (Should-Run-Step "Install") 
 {
 	Write-Host "Installing Exchange 2013"
-	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /ps"
-	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /p /on:$domain"
-	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /pd"
-	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /mode:install /r:mb,ca /MdbName:$domain_db1"
+	Start-Process -Wait -FilePath $setupPath -ArgumentList "/IAcceptExchangeServerLicenseTerms /ps"
+	Start-Process -Wait -FilePath $setupPath -ArgumentList "/IAcceptExchangeServerLicenseTerms /p /on:$env:USERDOMAIN"
+	Start-Process -Wait -FilePath $setupPath -ArgumentList "/IAcceptExchangeServerLicenseTerms /pd"
+	Start-Process -Wait -FilePath $setupPath -ArgumentList "/IAcceptExchangeServerLicenseTerms /mode:install /r:mb,ca /MdbName:exchange_db1"
 	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Completing"
 }
@@ -126,6 +128,11 @@ if (Should-Run-Step "Install")
 if (Should-Run-Step "Completing") 
 {
 	Write-Host "Completing Exchange 2013 Installation"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0 
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value ""
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value ""
+
 }
 
 Wait-For-Keypress "Exchange 2013 installation completed, press any key to exit ..."
