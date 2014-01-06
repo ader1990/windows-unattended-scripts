@@ -74,15 +74,13 @@ $domain = "FONTOHOME"
 $domainsuffix ="LOCAL"
 $dcusername = "administrator"
 $dcpassword = "FontoMarco1982!"
-$svcusername = "sqlserver"
-$svcpassword = "Sql!2014!Test"
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
 {
-    NET USER sqlserver "!Sql2014Server" /ADD
+    $completeusername = $domain
     $secpasswd = ConvertTo-SecureString $dcpassword -AsPlainText -Force
-    $creds = New-Object System.Management.Automation.PSCredential ($dcusername , $secpasswd)
+    $creds = New-Object System.Management.Automation.PSCredential ("administrator" , $secpasswd)
 	Write-Host "Joining Active Directory"
 	New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
@@ -93,45 +91,43 @@ if (Should-Run-Step "Join")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
     add-computer -Credential $creds -DomainName $domain
     Write-Host "System will be rebooting right now"
+	Restart-And-Resume $script "Features"
+}
+
+if (Should-Run-Step "Features") 
+{
+	Write-Host "Installing Windows Features"
+	Install-WindowsFeature RSAT-ADDS, AS-HTTP-Activation, Desktop-Experience, NET-Framework-45-Features, RPC-over-HTTP-proxy, RSAT-Clustering, RSAT-Clustering-CmdInterface, Web-Mgmt-Console, WAS-Process-Model, Web-Asp-Net45, Web-Basic-Auth, Web-Client-Auth, Web-Digest-Auth, Web-Dir-Browsing, Web-Dyn-Compression, Web-Http-Errors, Web-Http-Logging, Web-Http-Redirect, Web-Http-Tracing, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Lgcy-Mgmt-Console, Web-Metabase, Web-Mgmt-Console, Web-Mgmt-Service, Web-Net-Ext45, Web-Request-Monitor, Web-Server, Web-Stat-Compression, Web-Static-Content, Web-Windows-Auth, Web-WMI, Windows-Identity-Foundation
+	Write-Host "System will be rebooting right now"
+	Restart-And-Resume $script "Prerequisites"
+}
+
+if (Should-Run-Step "Prerequisites") 
+{
+	Write-Host "Installing Exchange 2013 Prerequisites"
+	DependencyInstall "http://download.microsoft.com/download/0/A/2/0A28BBFA-CBFA-4C03-A739-30CCA5E21659/FilterPack64bit.exe" "FilterPack64bit.exe"	
+	DependencyInstall "http://download.microsoft.com/download/A/A/3/AA345161-18B8-45AE-8DC8-DA6387264CB9/filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe" "filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe"
+	DependencyInstall "http://download.microsoft.com/download/2/C/4/2C47A5C1-A1F3-4843-B9FE-84C0032C61EC/UcmaRuntimeSetup.exe" "UcmaRuntimeSetup.exe"
+	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Install"
 }
 
-
 if (Should-Run-Step "Install") 
 {
-	Write-Host "Installing Sql Server 2012"
-    $PARAMS="/ACTION=install " #required
-    $PARAMS+="/QS "            #quiet mode with process execution lapse
-    $PARAMS+="/IACCEPTSQLSERVERLICENSETERMS=1 " #accept end user agreement
-    $PARAMS+="/INSTANCENAME=MSSQLSERVER " #instance name
-    $PARAMS+="/FEATURES=SQLENGINE,ADV_SSMS " #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature
-    $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$dcusername " #provides system admin account
-    $PARAMS+="/UpdateEnabled=1 " #enable installing updates from a specified path
-    #$PARAMS+="/UpdateSource="" " #folder, UNC path of updates
-    #$PARAMS+="/AGTSVCACCOUNT="" " #sql server agent service execution account
-    #$PARAMS+="/AGTSVCPASSWORD ="" " #sql server agent service execution account password
-    $PARAMS+="/AGTSVCSTARTUPTYPE=Automatic "#sql server agent service startup mode
-    $PARAMS+="/BROWSERSVCSTARTUPTYPE=Automatic "#sql server browser startup mode
-    #$PARAMS+="/INSTALLSQLDATADIR="" "#sql server data directory location; default %Program Files%\Microsoft SQL Server
-    $PARAMS+="/SECURITYMODE=SQL " #enables mixed mode authentication
-    $PARAMS+="/SAPWD=SqlSa2014! " #mandatory if you enable mixed mode authentication
-    #$PARAMS+="/SQLBACKUPDIR="" "#specifies an alternative backup dir
-    #$PARAMS+="/SQLCOLLATION="" "#default is windows' locale
-    $PARAMS+="/SQLSVCACCOUNT=$svcusername " #specifies account for sql server instance service
-    $PARAMS+="/SQLSVCPASSWORD=$svcpassword " #specifies password for sql server instance service
-    $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
-    $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
-    $PARAMS+="/TCPENABLED=1 " #enables tcp protocol
-    Start-Process -Wait -FilePath "d:\setup.exe" -ArgumentList $PARAMS
+	Write-Host "Installing Exchange 2013"
+	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /ps"
+	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /p /on:$domain"
+	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /pd"
+	Start-Process -Wait -FilePath "d:/Setup.exe" -ArgumentList "/IAcceptExchangeServerLicenseTerms /mode:install /r:mb,ca /MdbName:$domain_db1"
 	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Completing"
 }
 
 if (Should-Run-Step "Completing") 
 {
-	Write-Host "Completing Sql Server 2012 Installation"
+	Write-Host "Completing Exchange 2013 Installation"
 }
 
-Wait-For-Keypress "Sql Server 2012 installation completed, press any key to exit ..."
+Wait-For-Keypress "Exchange 2013 installation completed, press any key to exit ..."
 
 
