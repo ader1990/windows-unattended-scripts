@@ -1,20 +1,21 @@
 param($Step="Join",
-$domain = "FONTOHOME",
-$domainsuffix ="LOCAL",
-$dcusername = "administrator",
+$domain = "cloudbase",
+$domainsuffix ="local",
+$dcusername = "Administrator",
 $dcpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
 $svcpassword = "!Sql2014Server",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
-$setupPath = "d:\setup.exe")
+$setupPath = "E:\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198\setup.exe")
 $global:started = $FALSE
 $global:startingStep = $Step
 $global:restartKey = "Restart-And-Resume"
 $global:RegRunKey ="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $global:powershell = (Join-Path $env:windir "system32\WindowsPowerShell\v1.0\powershell.exe")
 
+$tempFolder = "C:\Windows\Temp\"
 
 function Should-Run-Step([string] $prospectStep) 
 {
@@ -79,10 +80,18 @@ function DependencyInstall($url, $filename) {
         del $filename
 }
 
+$logFile = $tempFolder + "install_sql_log.txt"
+New-Item $logFile -type file
+function log([string] $message){
+    Add-Content $logFile $message
+}
+
+
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 if (Should-Run-Step "Join") 
 {
+    log "Joining_domain"
     NET USER $svcusername $svcpassword /ADD
 
     $secpasswd = ConvertTo-SecureString $dcpassword -AsPlainText -Force
@@ -97,6 +106,7 @@ if (Should-Run-Step "Join")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
     add-computer -Credential $creds -DomainName $domain
+    log "joined_domain"
     Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Install"
 }
@@ -104,6 +114,7 @@ if (Should-Run-Step "Join")
 
 if (Should-Run-Step "Install") 
 {
+    log "start_install_sql"
 	Write-Host "Installing Sql Server 2012"
     $hostname = hostname
     $PARAMS="/ACTION=install " #required
@@ -130,6 +141,7 @@ if (Should-Run-Step "Install")
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
 	Write-Host "System will be rebooting right now"
+        log "stop_install"
 	Restart-And-Resume $script "Completing"
 }
 
