@@ -105,7 +105,11 @@ if (Should-Run-Step "Join")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
-    add-computer -Credential $creds -DomainName $domain -f
+    Add-Computer -Credential $creds -DomainName $domain"."$domainsuffix -f
+    if (!$?) {
+              log "Add to domain failed" 
+              throw "VMware tools setup failed" 
+              }
     log "joined_domain"
     Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Install"
