@@ -1,4 +1,4 @@
-param($Step="Join",
+param($Step="Prepare",
 $domain = "FONTOHOME",
 $domainsuffix ="LOCAL",
 $dcusername = "administrator",
@@ -81,6 +81,31 @@ function DependencyInstall($url, $filename) {
 
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
+
+if (Should-Run-Step "Prepare")
+{
+   #using old local administrator account
+   $localadmin = [ADSI]'WinNT://./Administrator'
+   $localadmin.SetPassword($dcpassword)
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   Restart-And-Resume $script "Join"
+   #Comment lines above in order to use cloudbase admin account
+   #$cloudbaseadminpassword = "how to get it"
+   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Admin"
+   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $cloudbaseadminpassword
+   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Admin"
+   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $cloudbaseadminpassword
+   #Restart-And-Resume $script "Join"
+}
+
+
 if (Should-Run-Step "Join") 
 {
     NET USER $svcusername $svcpassword /ADD
