@@ -7,8 +7,8 @@ $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
 $setupPath = "E:\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198\setup.exe",
-$domain = "",
-$dnsip="")
+$domain = "cloudbase.local",
+$dnsip="10.7.51.202")
 $global:started = $FALSE
 $global:startingStep = $Step
 $global:restartKey = "Restart-And-Resume"
@@ -20,8 +20,8 @@ function Should-Run-Step([string] $prospectStep)
 {
     if ($global:startingStep -eq $prospectStep -or $global:started) {
         $global:started = $TRUE
-    }
-    return $global:started
+	  }
+	 return $global:started
 }
 
 function Wait-For-Keypress([string] $message, [bool] $shouldExit=$FALSE)
@@ -30,7 +30,7 @@ function Wait-For-Keypress([string] $message, [bool] $shouldExit=$FALSE)
     $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     if ($shouldExit) {
         exit
-    }
+	  }
 }
 
 function Test-Key([string] $path, [string] $key)
@@ -69,7 +69,7 @@ function Clear-Any-Restart([string] $key=$global:restartKey)
 
 function Restart-And-Resume([string] $script, [string] $step)
 {
-    Restart-And-Run $global:restartKey "$global:powershell $script -Step $step"
+	Restart-And-Run $global:restartKey "$global:powershell $script -Step $step"
 }
 
 $logFile = $tempFolder + "install_sql2012_log.txt"
@@ -94,15 +94,12 @@ if (Should-Run-Step "Prepare")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-    if ($domain -ne "")
+    if ($domain -eq "")
     {
-        log("Join Domain at next logon")
-        log($domain)
         Restart-And-Resume $script "Join"
     }
     else
     {
-        log("Install sql at next logon")
         Restart-And-Resume $script "Install"
     }
 }
@@ -113,8 +110,8 @@ if (Should-Run-Step "Join")
     log "Joining domain"
     $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
-    Write-Host "Joining Active Directory"
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
+	  Write-Host "Joining Active Directory"
+	  New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
@@ -136,14 +133,14 @@ if (Should-Run-Step "Join")
     log "Joined domain"
 
     Write-Host "System will be rebooting right now"
-    Restart-And-Resume $script "Install"
+	  Restart-And-Resume $script "Install"
 }
 
 
 if (Should-Run-Step "Install")
 {
     log "Start sql server 2012 install"
-    Write-Host "Installing Sql Server 2012"
+	  Write-Host "Installing Sql Server 2012"
     NET USER $svcusername $svcpassword /ADD
     $hostname = hostname
     $PARAMS="/ACTION=install " #required
@@ -177,13 +174,13 @@ if (Should-Run-Step "Install")
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
     log "Stop Sql Server 2012 install"
-    Write-Host "System will be rebooting right now"
-    Restart-And-Resume $script "Completing"
+	  Write-Host "System will be rebooting right now"
+	  Restart-And-Resume $script "Completing"
 }
 
 if (Should-Run-Step "Completing")
 {
-    Write-Host "Completing Sql Server 2012 Installation"
+	  Write-Host "Completing Sql Server 2012 Installation"
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value ""
