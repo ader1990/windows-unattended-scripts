@@ -1,7 +1,4 @@
-param($Step="Prepare",
-$domain = "",
-$domainsuffix ="",
-$adminusername = "administrator",
+param($adminusername = "administrator",
 $adminpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
 $svcpassword = "!Sql2014Server",
@@ -9,6 +6,8 @@ $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
 $setupPath = "E:\setup.exe",
+$joinDomain = $False,
+$domain = "",
 $dnsip="")
 $global:started = $FALSE
 $global:startingStep = $Step
