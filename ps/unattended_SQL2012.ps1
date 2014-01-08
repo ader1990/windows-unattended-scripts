@@ -15,7 +15,7 @@ $global:restartKey = "Restart-And-Resume"
 $global:RegRunKey ="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $global:powershell = (Join-Path $env:windir "system32\WindowsPowerShell\v1.0\powershell.exe")
 $tempFolder="c:\Windows\temp\"
-
+$Step = "Prepare"
 function Should-Run-Step([string] $prospectStep)
 {
     if ($global:startingStep -eq $prospectStep -or $global:started) {
