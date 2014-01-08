@@ -1,4 +1,5 @@
-param($adminusername = "administrator",
+param($Step="Prepare",
+$adminusername = "administrator",
 $adminpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
 $svcpassword = "!Sql2014Server",
