@@ -1,20 +1,21 @@
 param($Step="Prepare",
-$domain = "FONTOHOME",
-$domainsuffix ="LOCAL",
-$dcusername = "administrator",
-$dcpassword = "FontoMarco1982!",
+$domain = "",
+$domainsuffix ="",
+$adminusername = "administrator",
+$adminpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
 $svcpassword = "!Sql2014Server",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
-$setupPath = "d:\setup.exe")
+$setupPath = "d:\setup.exe",
+$dnsip="")
 $global:started = $FALSE
 $global:startingStep = $Step
 $global:restartKey = "Restart-And-Resume"
 $global:RegRunKey ="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $global:powershell = (Join-Path $env:windir "system32\WindowsPowerShell\v1.0\powershell.exe")
-
+$tempFolder="c:\Windows\temp\"
 
 function Should-Run-Step([string] $prospectStep) 
 {
@@ -79,6 +80,12 @@ function DependencyInstall($url, $filename) {
         del $filename
 }
 
+$logFile = $tempFolder + "install_sql_log.txt"
+New-Item $logFile -type file
+function log([string] $message){
+    Add-Content $logFile $message
+}
+
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 
@@ -86,42 +93,48 @@ if (Should-Run-Step "Prepare")
 {
    #using old local administrator account
    $localadmin = [ADSI]'WinNT://./Administrator'
-   $localadmin.SetPassword($dcpassword)
+   $localadmin.SetPassword($adminpassword)
    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
+   if ($domain -eq "")
+   {
    Restart-And-Resume $script "Join"
-   #Comment lines above in order to use cloudbase admin account
-   #$cloudbaseadminpassword = "how to get it"
-   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Admin"
-   #New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $cloudbaseadminpassword
-   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Admin"
-   #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $cloudbaseadminpassword
-   #Restart-And-Resume $script "Join"
+   }
+   else
+   {
+   Restart-And-Resume $script "Install"
+   }
 }
 
 
 if (Should-Run-Step "Join") 
 {
-    NET USER $svcusername $svcpassword /ADD
-
-    $secpasswd = ConvertTo-SecureString $dcpassword -AsPlainText -Force
-    $creds = New-Object System.Management.Automation.PSCredential ($dcusername , $secpasswd)
+    log "Joining_domain"
+    $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
+    $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
 	Write-Host "Joining Active Directory"
 	New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
+    $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
+    $wmi.SetDNSServerSearchOrder($dnsip)
     add-computer -Credential $creds -DomainName $domain
+    if (!$?) {
+        $error_message = ($error[0] | out-string)
+        log "Add to domain failed"
+        log $error_message
+        throw "AD Controller failed to install"
+    }
+    log "joined_domain"
     Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Install"
 }
@@ -129,14 +142,23 @@ if (Should-Run-Step "Join")
 
 if (Should-Run-Step "Install") 
 {
+    log "start_install_sql"
 	Write-Host "Installing Sql Server 2012"
+    NET USER $svcusername $svcpassword /ADD
     $hostname = hostname
     $PARAMS="/ACTION=install " #required
     $PARAMS+="/QS "            #quiet mode with process execution lapse
     $PARAMS+="/IACCEPTSQLSERVERLICENSETERMS=1 " #accept end user agreement
     $PARAMS+="/INSTANCENAME=$instancename " #instance name
     $PARAMS+="/FEATURES=$features " #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature
-    $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$dcusername " #provides system admin account
+    if ($domain -eq "")
+    {
+    $PARAMS+="/SQLSYSADMINACCOUNTS=.\$adminusername " #provides system admin account
+    }
+    else
+    {
+    $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$adminusername " #provides system admin account
+    }
     $PARAMS+="/UpdateEnabled=1 " #enable installing updates from a specified path
     #$PARAMS+="/UpdateSource="" " #folder, UNC path of updates
     #$PARAMS+="/AGTSVCACCOUNT="" " #sql server agent service execution account
@@ -154,6 +176,7 @@ if (Should-Run-Step "Install")
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
+    log "stop_install_sql"
 	Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Completing"
 }

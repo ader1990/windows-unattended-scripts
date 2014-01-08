@@ -1,9 +1,10 @@
-param($Step="Join",
+param($Step="Prepare",
 $domain = "FONTOHOME",
 $domainsuffix ="LOCAL",
 $dcusername = "administrator",
 $dcpassword = "FontoMarco1982!",
-$setupPath = "d:\setup.exe")
+$setupPath = "d:\setup.exe",
+$dnsip="")
 
 $global:started = $FALSE
 $global:startingStep = $Step
@@ -78,6 +79,20 @@ function DependencyInstall($url, $filename) {
 
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
+if (Should-Run-Step "Prepare")
+{
+   #using old local administrator account
+   $localadmin = [ADSI]'WinNT://./Administrator'
+   $localadmin.SetPassword($dcpassword)
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
+   Restart-And-Resume $script "Join"
+}
+
 if (Should-Run-Step "Join") 
 {
     $completeusername = $domain
@@ -91,6 +106,8 @@ if (Should-Run-Step "Join")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $dcusername
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $dcpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
+    $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
+    $wmi.SetDNSServerSearchOrder($dnsip)
     add-computer -Credential $creds -DomainName $domain
     Write-Host "System will be rebooting right now"
 	Restart-And-Resume $script "Features"
