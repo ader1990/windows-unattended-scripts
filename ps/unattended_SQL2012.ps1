@@ -1,14 +1,13 @@
 param($Step="Prepare",
-$domain = "",
-$domainsuffix ="",
 $adminusername = "administrator",
-$adminpassword = "FontoMarco1982!",
+$adminpassword = "Passw0rd",
 $svcusername = "sqlserver",
 $svcpassword = "!Sql2014Server",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
 $setupPath = "d:\setup.exe",
+$domain = "",
 $dnsip="")
 $global:started = $FALSE
 $global:startingStep = $Step
@@ -17,71 +16,66 @@ $global:RegRunKey ="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $global:powershell = (Join-Path $env:windir "system32\WindowsPowerShell\v1.0\powershell.exe")
 $tempFolder="c:\Windows\temp\"
 
-function Should-Run-Step([string] $prospectStep) 
+function Should-Run-Step([string] $prospectStep)
 {
-	if ($global:startingStep -eq $prospectStep -or $global:started) {
-		$global:started = $TRUE
-	}
-	return $global:started
+    if ($global:startingStep -eq $prospectStep -or $global:started) {
+        $global:started = $TRUE
+	  }
+	 return $global:started
 }
 
-function Wait-For-Keypress([string] $message, [bool] $shouldExit=$FALSE) 
+function Wait-For-Keypress([string] $message, [bool] $shouldExit=$FALSE)
 {
-	Write-Host "$message" -foregroundcolor yellow
-	$key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-	if ($shouldExit) {
-		exit
-	}
+    Write-Host "$message" -foregroundcolor yellow
+    $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    if ($shouldExit) {
+        exit
+	  }
 }
 
 function Test-Key([string] $path, [string] $key)
 {
-    return ((Test-Path $path) -and ((Get-Key $path $key) -ne $null))   
+    return ((Test-Path $path) -and ((Get-Key $path $key) -ne $null))
 }
 
 function Remove-Key([string] $path, [string] $key)
 {
-	Remove-ItemProperty -path $path -name $key
+    Remove-ItemProperty -path $path -name $key
 }
 
-function Set-Key([string] $path, [string] $key, [string] $value) 
+function Set-Key([string] $path, [string] $key, [string] $value)
 {
-	Set-ItemProperty -path $path -name $key -value $value
+    Set-ItemProperty -path $path -name $key -value $value
 }
 
-function Get-Key([string] $path, [string] $key) 
+function Get-Key([string] $path, [string] $key)
 {
-	return (Get-ItemProperty $path).$key
+    return (Get-ItemProperty $path).$key
 }
 
-function Restart-And-Run([string] $key, [string] $run) 
+function Restart-And-Run([string] $key, [string] $run)
 {
-	Set-Key $global:RegRunKey $key $run
-	Restart-Computer
-	exit
-} 
-
-function Clear-Any-Restart([string] $key=$global:restartKey) 
-{
-	if (Test-Key $global:RegRunKey $key) {
-		Remove-Key $global:RegRunKey $key
-	}
+    Set-Key $global:RegRunKey $key $run
+    Restart-Computer
+    exit
 }
 
-function Restart-And-Resume([string] $script, [string] $step) 
+function Clear-Any-Restart([string] $key=$global:restartKey)
+{
+    if (Test-Key $global:RegRunKey $key) {
+        Remove-Key $global:RegRunKey $key
+    }
+}
+
+function Restart-And-Resume([string] $script, [string] $step)
 {
 	Restart-And-Run $global:restartKey "$global:powershell $script -Step $step"
 }
 
-function DependencyInstall($url, $filename) {
-    Write-Host "Downloading and installing: $filename"
-        (new-object System.Net.WebClient).DownloadFile($url, "$pwd\$filename")
-        Start-Process -Wait $filename -ArgumentList "/quiet"
-        del $filename
+$logFile = $tempFolder + "install_sql2012_log.txt"
+if(!(Test-Path -Path $logFile )){
+    New-Item $logFile -type file
 }
-
-$logFile = $tempFolder + "install_sql_log.txt"
-New-Item $logFile -type file
 function log([string] $message){
     Add-Content $logFile $message
 }
@@ -91,59 +85,62 @@ Clear-Any-Restart
 
 if (Should-Run-Step "Prepare")
 {
-   #using old local administrator account
-   $localadmin = [ADSI]'WinNT://./Administrator'
-   $localadmin.SetPassword($adminpassword)
-   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-   New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
-   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-   Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-   if ($domain -eq "")
-   {
-   Restart-And-Resume $script "Join"
-   }
-   else
-   {
-   Restart-And-Resume $script "Install"
-   }
+    #using old local administrator account
+    $localadmin = [ADSI]'WinNT://./Administrator'
+    $localadmin.SetPassword($adminpassword)
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
+    if ($domain -eq "")
+    {
+        Restart-And-Resume $script "Join"
+    }
+    else
+    {
+        Restart-And-Resume $script "Install"
+    }
 }
 
 
-if (Should-Run-Step "Join") 
+if (Should-Run-Step "Join")
 {
-    log "Joining_domain"
+    log "Joining domain"
     $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
-	Write-Host "Joining Active Directory"
-	New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+	  Write-Host "Joining Active Directory"
+	  New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
+
     $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
     $wmi.SetDNSServerSearchOrder($dnsip)
-    add-computer -Credential $creds -DomainName $domain
+
+    Add-Computer -Credential $creds -DomainName $domain
     if (!$?) {
-        $error_message = ($error[0] | out-string)
+        $errorMessage = ($error[0] | out-string)
         log "Add to domain failed"
-        log $error_message
+        log $errorMessage
         throw "AD Controller failed to install"
     }
-    log "joined_domain"
+    log "Joined domain"
+
     Write-Host "System will be rebooting right now"
-	Restart-And-Resume $script "Install"
+	  Restart-And-Resume $script "Install"
 }
 
 
-if (Should-Run-Step "Install") 
+if (Should-Run-Step "Install")
 {
-    log "start_install_sql"
-	Write-Host "Installing Sql Server 2012"
+    log "Start sql server 2012 install"
+	  Write-Host "Installing Sql Server 2012"
     NET USER $svcusername $svcpassword /ADD
     $hostname = hostname
     $PARAMS="/ACTION=install " #required
@@ -153,11 +150,11 @@ if (Should-Run-Step "Install")
     $PARAMS+="/FEATURES=$features " #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature
     if ($domain -eq "")
     {
-    $PARAMS+="/SQLSYSADMINACCOUNTS=.\$adminusername " #provides system admin account
+        $PARAMS+="/SQLSYSADMINACCOUNTS=.\$adminusername " #provides system admin account
     }
     else
     {
-    $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$adminusername " #provides system admin account
+        $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$adminusername " #provides system admin account
     }
     $PARAMS+="/UpdateEnabled=1 " #enable installing updates from a specified path
     #$PARAMS+="/UpdateSource="" " #folder, UNC path of updates
@@ -176,15 +173,15 @@ if (Should-Run-Step "Install")
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
-    log "stop_install_sql"
-	Write-Host "System will be rebooting right now"
-	Restart-And-Resume $script "Completing"
+    log "Stop Sql Server 2012 install"
+	  Write-Host "System will be rebooting right now"
+	  Restart-And-Resume $script "Completing"
 }
 
-if (Should-Run-Step "Completing") 
+if (Should-Run-Step "Completing")
 {
-	Write-Host "Completing Sql Server 2012 Installation"
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0 
+	  Write-Host "Completing Sql Server 2012 Installation"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value ""
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value ""
