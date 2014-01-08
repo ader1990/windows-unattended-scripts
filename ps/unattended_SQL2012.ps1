@@ -1,4 +1,6 @@
 param($Step="Prepare",
+$domain = "",
+$domainsuffix ="",
 $adminusername = "administrator",
 $adminpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
@@ -6,8 +8,7 @@ $svcpassword = "!Sql2014Server",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
 $sapassword = "Sql!Server2014",
-$setupPath = "E:\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198\setup.exe",
-$domain = "",
+$setupPath = "E:\setup.exe",
 $dnsip="")
 $global:started = $FALSE
 $global:startingStep = $Step
@@ -176,6 +177,12 @@ if (Should-Run-Step "Install")
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
+    if (!$?) {
+        $errorMessage = ($error[0] | out-string)
+        log "SQL install"
+        log $errorMessage
+        throw "SQL failed to install"
+    }
     log "Stop Sql Server 2012 install"
     Write-Host "System will be rebooting right now"
     Restart-And-Resume $script "Completing"
