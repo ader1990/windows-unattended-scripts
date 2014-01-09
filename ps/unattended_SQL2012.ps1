@@ -127,15 +127,15 @@ if (Should-Run-Step "Prepare")
 
 if (!Should-Run-Step "Prepare"){
     $adminpassword = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminpassword).adminpassword
-    $adminusername= (Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name adminusername).adminusername
-    $svcusername= (Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name svcusername).svcusername 
-    $svcpassword=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name svcpassword).svcpassword
-    $features=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name feature).feature
-    $instancename=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name instancename).instancename
-    $sapassword=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name sapassword).sapassword
-    $setupPath=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name setuppath).setuppath 
-    $domain=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name domain).domain
-    $domainsuffix=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name domainsuffix).domainsuffix
+    $adminusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminusername).adminusername
+    $svcusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name svcusername).svcusername 
+    $svcpassword=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name svcpassword).svcpassword
+    $features=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name features).features
+    $instancename=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name instancename).instancename
+    $sapassword=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name sapassword).sapassword
+    $setupPath=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name setuppath).setuppath 
+    $domain=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domain).domain
+    $domainsuffix=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domainsuffix).domainsuffix
 }
 if (Should-Run-Step "Join")
 {
@@ -145,6 +145,9 @@ if (Should-Run-Step "Join")
     $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
     Write-Host "Joining Active Directory"
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
@@ -187,7 +190,7 @@ if (Should-Run-Step "Install")
     }
     else
     {
-        $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$adminusername " #provides system admin account
+        $PARAMS+="/SQLSYSADMINACCOUNTS= $env:USERDOMAIN\$adminusername " #provides system admin account
     }
     $PARAMS+="/UpdateEnabled=1 " #enable installing updates from a specified path
     #$PARAMS+="/UpdateSource="" " #folder, UNC path of updates
