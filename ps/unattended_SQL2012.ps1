@@ -99,16 +99,17 @@ if (Should-Run-Step "Prepare")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name adminpassword -Value $adminpassword
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name adminusername -Value $adminusername
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name svcusername -Value $svcusername
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name svcpassword -Value $svcpassword
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name features -Value $features
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name instancename -Value $instancename
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name sapassword -Value $sapassword
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name setuppath -Value $setupPath
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name domain  -Value $domain
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name domainsuffix -Value $domainsuffix
+    New-Item -Path Registry::HKLM\SOFTWARE\Unattended
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminpassword -Value $adminpassword
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminusername -Value $adminusername
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name svcusername -Value $svcusername
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name svcpassword -Value $svcpassword
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name features -Value $features
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name instancename -Value $instancename
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name sapassword -Value $sapassword
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name setuppath -Value $setupPath
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domain  -Value $domain
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domainsuffix -Value $domainsuffix
     
     if ($domain -ne "")
     {
@@ -125,16 +126,16 @@ if (Should-Run-Step "Prepare")
 }
 
 if (!Should-Run-Step "Prepare"){
-    $adminpassword = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name adminpassword).adminpassword
-    $adminusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name adminusername).adminusername
-    $svcusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name svcusername).svcusername 
-    $svcpassword=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name svcpassword).svcpassword
-    $features=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name feature).feature
-    $instancename=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name instancename).instancename
-    $sapassword=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name sapassword).sapassword
-    $setupPath=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name setuppath).setuppath 
-    $domain=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name domain).domain
-    $domainsuffix=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name domainsuffix).domainsuffix
+    $adminpassword = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminpassword).adminpassword
+    $adminusername= (Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name adminusername).adminusername
+    $svcusername= (Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name svcusername).svcusername 
+    $svcpassword=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name svcpassword).svcpassword
+    $features=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name feature).feature
+    $instancename=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name instancename).instancename
+    $sapassword=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name sapassword).sapassword
+    $setupPath=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name setuppath).setuppath 
+    $domain=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name domain).domain
+    $domainsuffix=(Get-ItemProperty -Path 'HKLM\SOFTWARE\Unattended' -Name domainsuffix).domainsuffix
 }
 if (Should-Run-Step "Join")
 {
@@ -226,6 +227,7 @@ if (Should-Run-Step "Completing")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value ""
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value ""
+    Remove-Item -Path Registry::HKLM\SOFTWARE\Unattended
 }
 
 Wait-For-Keypress "Sql Server 2012 installation completed, press any key to exit ..."
