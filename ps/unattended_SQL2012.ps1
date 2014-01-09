@@ -188,9 +188,16 @@ if (Should-Run-Step "Install")
     $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
-
+    if ($domain -eq "")
+    {
     $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
+    }
+    else
+    {
+    $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
+    $creds = New-Object System.Management.Automation.PSCredential ("Administrator" , $secpasswd)
+    }
     Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS -Credential $creds
     if (!$?) {
         $errorMessage = ($error[0] | out-string)
