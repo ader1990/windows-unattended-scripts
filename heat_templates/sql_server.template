@@ -1,72 +1,121 @@
 {
-    "HeatTemplateVersion": "2013-05-23", 
-    "Description": "Active Directory Domain Controller with Heat", 
+    "HeatTemplateVersion": "2013-05-23",
+    "Description": "MS SQL Server 2012 Deployment",
     "Mappings": {
         "Flavor2Arch": {
             "m1.large": {
                 "Arch": "64"
-            }, 
+            },
             "m1.medium": {
                 "Arch": "64"
-            }, 
+            },
             "m1.small": {
                 "Arch": "64"
-            }, 
+            },
             "m1.sminy": {
                 "Arch": "64"
-            }, 
+            },
             "m1.xlarge": {
                 "Arch": "64"
             }
-        }, 
+        },
         "VersionArch2Image": {
             "WS12R2": {
                 "64": "Windows Server 2012 R2 Std Eval VHD"
             }
         }
-    }, 
+    },
     "Parameters": {
+        "AdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "administrator",
+            "Description": "The Admin username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "AdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Default": "FontoMarco1982!",
+            "Description": "The safe mode administration password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "ServiceUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "administrator",
+            "Description": "The username under which the sql service runs name",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "ServiceUsernamePassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Default": "FontoMarco1982!",
+            "Description": "The service username password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "MSSQLFeatures": {
+            "Description": "MSSQL Features to be installed",
+            "Default": "SQLENGINE,ADV_SSMS",
+            "Type": "String"
+        },
+        "MSSQLInstanceName": {
+            "Description": "MSSQL Instance Name",
+            "Default": "MSSQLSERVER",
+            "Type": "String"
+        },
+        "MSSQLSaPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Default": "FontoMarco1982!",
+            "Description": "The sa account password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "IsoSetupPath": {
+            "Description": "The setup path",
+            "Default": "F:\\setup.exe",
+            "Type": "String"
+        },
         "DomainName": {
-            "AllowedPattern": "[A-Za-z0-9]+(?=[\\.\\-][a-zA-Z0-9])*\\.[a-zA-z09]+", 
-            "ConstraintDescription": "must be a valid DNS name.", 
-            "Default": "cloudbase.local", 
-            "Description": "The domain name", 
-            "MaxLength": "256", 
-            "MinLength": "3", 
+            "AllowedPattern": "[A-Za-z0-9]+(?=[\\.\\-][a-zA-Z0-9])*\\.[a-zA-z09]+",
+            "ConstraintDescription": "must be a valid DNS name.",
+            "Default": "cloudbase.local",
+            "Description": "The domain name",
+            "MaxLength": "256",
+            "MinLength": "3",
             "Type": "String"
-        }, 
-        "DomainNetbiosName": {
-            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*", 
-            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.", 
-            "Default": "cloudbase", 
-            "Description": "The Netbios domain name", 
-            "MaxLength": "15", 
-            "MinLength": "1", 
+        },
+        "DNSIp": {
+            "Default": "10.7.51.202",
+            "Description": "The dns for the active directory domain controler",
+            "MaxLength": "256",
+            "MinLength": "3",
             "Type": "String"
-        }, 
+        },
         "Flavor": {
             "AllowedValues": [
-                "m1.tiny", 
-                "m1.small", 
-                "m1.medium", 
-                "m1.large", 
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
                 "m1.xlarge"
-            ], 
-            "ConstraintDescription": "must be a valid flavor.", 
-            "Description": "", 
+            ],
+            "ConstraintDescription": "must be a valid flavor.",
+            "Description": "",
             "Type": "String"
-        }, 
+        },
         "KeyName": {
-            "Description": "Name of an existing keypair to enable SSH access to the instances", 
-            "Type": "String"
-        }, 
-        "SafeModeAdministratorPassword": {
-            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*", 
-            "ConstraintDescription": "Must contain letters, numbers and symbols", 
-            "Default": "Passw0rd", 
-            "Description": "The safe mode administration password", 
-            "MaxLength": "64", 
-            "MinLength": "8", 
+            "Description": "Name of an existing keypair to enable SSH access to the instances",
             "Type": "String"
         },
         "PublicNetId": {
@@ -82,107 +131,113 @@
             "Type": "String"
         },
         "PrivateSubnetId": {
-            "ConstraintDescription": "must be a valid subnet id.", 
-            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f", 
-            "Description": "Subnet private id", 
+            "ConstraintDescription": "must be a valid subnet id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "Subnet private id",
             "Type": "String"
-        }, 
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "must be a valid volume id.",
+            "Default": "9b9cc604-730d-45f5-90cf-fbe21c91c5a5",
+            "Description": "Volume id",
+            "Type": "String"
+        },
         "WindowsVersion": {
             "AllowedValues": [
                 "WS12R2"
-            ], 
-            "Default": "WS12R2", 
-            "Description": "Windows version of choice", 
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
             "Type": "String"
         }
-    }, 
+    },
     "Resources": {
-        "ADDCController": {
+        "MSSQLSERVER2012": {
             "Properties": {
                 "flavor": {
                     "Ref": "Flavor"
-                }, 
+                },
                 "image": {
                     "Fn::FindInMap": [
-                        "VersionArch2Image", 
+                        "VersionArch2Image",
                         {
                             "Ref": "WindowsVersion"
-                        }, 
+                        },
                         {
                             "Fn::FindInMap": [
-                                "Flavor2Arch", 
+                                "Flavor2Arch",
                                 {
                                     "Ref": "Flavor"
-                                }, 
+                                },
                                 "Arch"
                             ]
                         }
                     ]
-                }, 
+                },
                 "key_name": {
                     "Ref": "KeyName"
-                }, 
+                },
                 "networks": [
                     {
                         "port": {
                             "Ref": "floating_ip_port"
                         }
                     }
-                ], 
+                ],
                 "user_data": {
                     "Fn::Base64": {
                         "Fn::Join": [
-                            "", 
+                            "",
                             [
-                                "#ps1_sysnative\n", 
-				  "$user = [ADSI]'WinNT://./Administrator'\n",
+                                "#ps1_sysnative\n",
+				                "$user = [ADSI]'WinNT://./Administrator'\n",
                                 "# Disable user\n",
                                 "#$user.userflags = 2\n",
                                 "#$user.SetInfo()\n",
                                 "$user.SetPassword('",
                                 {
-                                    "Ref": "SafeModeAdministratorPassword"
+                                    "Ref": "AdministratorPassword"
                                 },
                                 "')\n",
-                                "$storageDir = $pwd\n",
-				"Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$storageDir = \"C:\\Windows\\Temp\"\n",
+				                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
                                 "$webclient = New-Object System.Net.WebClient\n",
-                                "$url = \"https://raw.github.com/mfontana82/windows-unattended-scripts/master/ps/unattended_SQL2012.ps1\"\n",
+                                "$url = \"https://raw.github.com/ader1990/windows-unattended-scripts/marco/ps/unattended_SQL2012.ps1\"\n",
                                 "$file = \"$storageDir\\install-sql-script.ps1\"\n",
                                 "$webclient.DownloadFile($url,$file)\n",
-                                "powershell.exe $file \"Join\" \"FONTOHOME\" \"LOCAL\" \"administrator\" \"FontoMarco1982!\" \"sqlserver\" \"Sql!2014!Test\" \"SQLENGINE,ADV_SSMS\" \"MSSQLSERVER\" \"Sql!Server2014\" \"E:\\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198\\setup.exe\"\n"
+                                "Start-Process \"C:\\Program Files (x86)\\Cloudbase Solutions\\Cloudbase-Init\\bin\\Elevate_x64.exe\" \"powershell.exe $file\"\n"
                             ]
                         ]
                     }
                 }
-            }, 
+            },
             "Type": "OS::Nova::Server"
         },
         "attachment":{
            "Type": "OS::Cinder::VolumeAttachment",
            "Properties":{
-              "instance_uuid": { "Ref" : "ADDCController" },
+              "instance_uuid": { "Ref" : "MSSQLSERVER2012" },
               "mountpoint": "/dev/sdb",
-              "volume_id": "aac87f5a-f5b9-4224-88bc-21d15a7b68d4"}
-          }, 
+              "volume_id": { "Ref" : "MediaDeviceVolumeId"}}
+          },
         "floating_ip": {
             "Properties": {
-                "floating_network_id": { "Ref" : "PublicNetId" }, 
+                "floating_network_id": { "Ref" : "PublicNetId" },
                 "port_id": {
                     "Ref": "floating_ip_port"
                 }
-            }, 
+            },
             "Type": "OS::Neutron::FloatingIP"
-        }, 
+        },
         "floating_ip_port": {
             "Properties": {
                 "fixed_ips": [
                     {
                         "subnet_id": { "Ref" : "PrivateSubnetId"}
                     }
-                ], 
+                ],
                 "network_id": { "Ref" : "PrivateNetId"}
-            }, 
+            },
             "Type": "OS::Neutron::Port"
         }
     }

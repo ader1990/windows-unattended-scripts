@@ -1,33 +1,20 @@
-param($Step="Prepare",
-$adminusername = "Administrator",
-$adminpassword = "FontoMarco1982!",
+param($adminusername = "Administrator",
+$adminpassword = "sp6juCrASPaT",
 $svcusername = "sqlserver",
-$svcpassword = "!Sql2014Server",
+$svcpassword = "sp6juCrASPaT",
 $features = "SQLENGINE,ADV_SSMS",
 $instancename = "MSSQLSERVER",
-$sapassword = "Sql!Server2014",
-$setupPath = "F:\setup.exe",
-$domain = "",
-$domainsuffix = "",
-$dnsip="")
+$sapassword = "sp6juCrASPaT",
+$setupPath = "E:\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198.iso",
+$domain = "")
 
 $global:RegRunKey ="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 $global:RegVarKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Unattended"
 $global:powershell = (Join-Path $env:windir "system32\WindowsPowerShell\v1.0\powershell.exe")
 
-$tempFolder = "c:\Windows\temp\"
-$logFile = $tempFolder + "install_sql2012_log.txt"
-if(!(Test-Path -Path $logFile )){
-    New-Item $logFile -type file
-}
-function log([string] $message){
-    Add-Content $logFile $message
-}
-
 $iso = Mount-DiskImage -PassThru $setupPath
 $isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + ":\setup.exe"
 
-log "Start sql server 2012 install"
 Write-Host "Installing Sql Server 2012"
 NET USER $svcusername $svcpassword /ADD
 $hostname = hostname
@@ -39,20 +26,12 @@ $PARAMS+="/FEATURES=$features " #features enabled. Possible features are stated 
 if ($domain -ne "")
 {
     #using old local administrator account
-    $localadmin = [ADSI]'WinNT://./Administrator'
+    $localadmin = [ADSI]'WinNT://./$adminusername'
     $localadmin.SetPassword($adminpassword)
-    $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
-    $wmi.SetDNSServerSearchOrder($dnsip)
     netdom join $env:computername /Domain:cloudbase /UserD:Administrator /PasswordD:$adminpassword /UserO:Administrator /PasswordO:$adminpassword
     if (!$?) {
-        log($domain)
-        log($domainsuffix)
-        $errorMessage = ($error[0] | out-string)
-        log "Add to domain failed"
-        log $errorMessage
         throw "AD Controller failed to install"
     }
-    log "Joined domain"
     $PARAMS+="/SQLSYSADMINACCOUNTS=$domain\$adminusername " #provides system admin account
 }
 else
@@ -75,13 +54,10 @@ $PARAMS+="/SQLSVCPASSWORD=$svcpassword " #specifies password for sql server inst
 $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
 $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
 $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
+
 Start-Process -Wait -FilePath $isoSetupPath -ArgumentList $PARAMS
 if (!$?) {
-    $errorMessage = ($error[0] | out-string)
-    log "SQL install"
-    log $errorMessage
     throw "SQL failed to install"
 }
-log "Stop Sql Server 2012 install"
 
 

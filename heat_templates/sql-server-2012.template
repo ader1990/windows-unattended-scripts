@@ -1,0 +1,323 @@
+{
+    "Description": "MS SQL Server 2012 Deployment",
+    "HeatTemplateVersion": "2013-05-23",
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    },
+    "Parameters": {
+        "AdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The Admin username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "AdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The safe mode administration password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "ServiceUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "sqlserver",
+            "Description": "The username under which the sql service runs name",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "ServiceUsernamePassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The service username password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "MSSQLFeatures": {
+            "Description": "MSSQL Features to be installed",
+            "Default": "SQLENGINE,ADV_SSMS",
+            "Type": "String"
+        },
+        "MSSQLInstanceName": {
+            "Description": "MSSQL Instance Name",
+            "Default": "MSSQLSERVER",
+            "Type": "String"
+        },
+        "MSSQLSaPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The sa account password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "IsoSetupPath": {
+            "Description": "The path to the sql server 2012 iso file",
+            "Default":"E:\\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198.iso",
+            "Type": "String"
+        },
+        "DomainName": {
+            "Default": "cloudbase",
+            "Description": "The active directory domain name",
+            "Type": "String"
+        },
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid flavor.",
+            "Description": "",
+            "Type": "String"
+        },
+        "KeyName": {
+            "Description": "Name of an existing keypair to enable SSH access to the instances",
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "Must be a valid subnet id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "Subnet private id",
+            "Type": "String"
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "Must be a valid volume id.",
+            "Default": "bc4939cb-0aa0-4445-8db8-4f3b290e43d1",
+            "Description": "Volume id",
+            "Type": "String"
+        },
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "MSSQLSERVER2012": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                },
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "Flavor"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "key_name": {
+                    "Ref": "KeyName"
+                },
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ],
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$adminusername = \"",
+                                {
+                                    "Ref": "AdministratorUsername"
+                                },
+                                "\"\n",
+                                "$adminpassword = \"",
+                                {
+                                    "Ref": "AdministratorPassword"
+                                },
+                                "\"\n",
+                                "$svcusername = \"",
+                                {
+                                    "Ref": "ServiceUsername"
+                                },
+                                "\"\n",
+                                "$svcpassword = \"",
+                                {
+                                    "Ref": "ServiceUsernamePassword"
+                                },
+                                "\"\n",
+                                "$features = \"",
+                                {
+                                    "Ref": "MSSQLFeatures"
+                                },
+                                "\"\n",
+                                "$instancename = \"",
+                                {
+                                    "Ref": "MSSQLInstanceName"
+                                },
+                                "\"\n",
+                                "$sapassword = \"",
+                                {
+                                    "Ref": "MSSQLSaPassword"
+                                },
+                                "\"\n",
+                                "$setupPath = \"",
+                                {
+                                    "Ref": "IsoSetupPath"
+                                },
+                                "\"\n",
+                                "$domain = \"",
+                                {
+                                    "Ref": "DomainName"
+                                },
+                                "\"\n",
+                                "$global:RegRunKey =\"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run\"\n",
+                                "$global:RegVarKey = \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Unattended\"\n",
+                                "$global:powershell = (Join-Path $env:windir \"system32\\WindowsPowerShell\\v1.0\\powershell.exe\")\n",
+                                "\n",
+                                "$iso = Mount-DiskImage -PassThru $setupPath\n",
+                                "$isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + \":\\setup.exe\"\n",
+                                "\n",
+                                "Write-Host \"Installing Sql Server 2012\"\n",
+                                "NET USER $svcusername $svcpassword /ADD\n",
+                                "$hostname = hostname\n",
+                                "$PARAMS=\"/ACTION=install \" #required\n",
+                                "$PARAMS+=\"/Q \"            #quiet mode with process execution lapse\n",
+                                "$PARAMS+=\"/IACCEPTSQLSERVERLICENSETERMS=1 \" #accept end user agreement\n",
+                                "$PARAMS+=\"/INSTANCENAME=$instancename \" #instance name\n",
+                                "$PARAMS+=\"/FEATURES=$features \" #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature\n",
+                                "if ($domain -ne \"\")\n",
+                                "{\n",
+                                "#using old local administrator account\n",
+                                "$localadmin = [ADSI]'WinNT://./Administrator'\n",
+                                "$localadmin.SetPassword($adminpassword)\n",
+                                "netdom join $env:computername /Domain:cloudbase /UserD:Administrator /PasswordD:$adminpassword /UserO:Administrator /PasswordO:$adminpassword\n",
+                                "if (!$?) {\n",
+                                "throw \"Failed to join Active Directory Domain.\"\n",
+                                "}\n",
+                                "$PARAMS+=\"/SQLSYSADMINACCOUNTS=$domain\\$adminusername \" #provides system admin account\n",
+                                "}\n",
+                                "else\n",
+                                "{\n",
+                                "$PARAMS+=\"/SQLSYSADMINACCOUNTS=.\\$adminusername \" #provides system admin account\n",
+                                "}\n",
+                                "$PARAMS+=\"/UpdateEnabled=1 \" #enable installing updates from a specified path\n",
+                                "#$PARAMS+=\"/UpdateSource=\"\" \" #folder, UNC path of updates\n",
+                                "#$PARAMS+=\"/AGTSVCACCOUNT=\"\" \" #sql server agent service execution account\n",
+                                "#$PARAMS+=\"/AGTSVCPASSWORD =\"\" \" #sql server agent service execution account password\n",
+                                "$PARAMS+=\"/AGTSVCSTARTUPTYPE=Automatic \"#sql server agent service startup mode\n",
+                                "$PARAMS+=\"/BROWSERSVCSTARTUPTYPE=Automatic \"#sql server browser startup mode\n",
+                                "#$PARAMS+=\"/INSTALLSQLDATADIR=\"\" \"#sql server data directory location; default %Program Files%\\Microsoft SQL Server\n",
+                                "$PARAMS+=\"/SECURITYMODE=SQL \" #enables mixed mode authentication\n",
+                                "$PARAMS+=\"/SAPWD=$sapassword \" #mandatory if you enable mixed mode authentication\n",
+                                "#$PARAMS+=\"/SQLBACKUPDIR=\"\" \"#specifies an alternative backup dir\n",
+                                "#$PARAMS+=\"/SQLCOLLATION=\"\" \"#default is windows' locale\n",
+                                "$PARAMS+=\"/SQLSVCACCOUNT=.\\$svcusername \" #specifies account for sql server instance service\n",
+                                "$PARAMS+=\"/SQLSVCPASSWORD=$svcpassword \" #specifies password for sql server instance service\n",
+                                "$PARAMS+=\"/SQLSVCSTARTUPTYPE=Automatic \" #specifies startup type of sql server instance service\n",
+                                "$PARAMS+=\"/NPENABLED=1 \" #enables named pipes protocol\n",
+                                "$PARAMS+=\"/TCPENABLED=1 /ERRORREPORTING=1\" #enables tcp protocol\n",
+                                "\n",
+                                "Start-Process -Wait -FilePath $isoSetupPath -ArgumentList $PARAMS\n",
+                                "if (!$?) {\n",
+                                "throw \"MS SQL Server installation failed.\"\n",
+                                "}\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "OS::Nova::Server"
+        },
+        "attachment": {
+            "Properties": {
+                "instance_uuid": {
+                    "Ref": "MSSQLSERVER2012"
+                },
+                "mountpoint": "/dev/sdb",
+                "volume_id": {
+                    "Ref": "MediaDeviceVolumeId"
+                }
+            },
+            "Type": "OS::Cinder::VolumeAttachment"
+        },
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": {
+                    "Ref": "PublicNetId"
+                },
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            },
+            "Type": "OS::Neutron::FloatingIP"
+        },
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": {
+                            "Ref": "PrivateSubnetId"
+                        }
+                    }
+                ],
+                "network_id": {
+                    "Ref": "PrivateNetId"
+                }
+            },
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}
