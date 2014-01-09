@@ -108,7 +108,7 @@ if (Should-Run-Step "Prepare")
    Restart-And-Resume $script "Join"
 }
 
-if (!Should-Run-Step "Prepare"){
+if ($True){
     
     $adminpassword = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domain).domain
     $svcusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name dcusername).dcusername 
