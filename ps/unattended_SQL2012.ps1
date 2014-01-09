@@ -1,4 +1,4 @@
-param($Step="Prepare",
+param($Step="Join",
 $adminusername = "administrator",
 $adminpassword = "FontoMarco1982!",
 $svcusername = "sqlserver",
@@ -87,18 +87,44 @@ function log([string] $message){
 $script = $myInvocation.MyCommand.Definition
 Clear-Any-Restart
 
-
-if (Should-Run-Step "Prepare")
+if (Should-Run-Step "Join")
 {
-    #using old local administrator account
+    log "Joining domain"
+    log($domain)
+    log($domainsuffix)
     $localadmin = [ADSI]'WinNT://./Administrator'
     $localadmin.SetPassword($adminpassword)
+    $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
+    $localcreds = New-Object System.Management.Automation.PSCredential ("Administrator" , $secpasswd)
+    $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
+    Import-PSSession -Session (New-PSSession -ComputerName $dcName) -CommandName New-ADUser
+    $Password = ConvertTo-SecureString "Install!Sql2014" -AsPlainText -Force
+    $Name = "installUser"
+    $Description = "$domain unattended Sql 2012 setup Account"
+    New-ADUser -Name $Name -AccountPassword $Password -Description $Description ` -Enabled $true 
+    Write-Host "Joining Active Directory"
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "installUser"
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value "Install!Sql2014"
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "Administrator"
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value "installUser"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value "Install!Sql2014"
+    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
+
+    $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
+    $wmi.SetDNSServerSearchOrder($dnsip)
+
+    Add-Computer -Credential $creds -DomainName $domain"."$domainsuffix -LocalCredential $localcreds -f
+    if (!$?) {
+        log($domain)
+        log($domainsuffix)
+        $errorMessage = ($error[0] | out-string)
+        log "Add to domain failed"
+        log $errorMessage
+        throw "AD Controller failed to install"
+    }
+    log "Joined domain"
     New-Item -Path Registry::HKLM\SOFTWARE\Unattended
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminpassword -Value $adminpassword
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminusername -Value $adminusername
@@ -110,22 +136,11 @@ if (Should-Run-Step "Prepare")
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name setuppath -Value $setupPath
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domain  -Value $domain
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domainsuffix -Value $domainsuffix
-    
-    if ($domain -ne "")
-    {
-        log("Join Domain at next logon")
-        log($domain)
-        log($domainsuffix)
-        Restart-And-Resume $script "Join"
-    }
-    else
-    {
-        log("Install sql at next logon")
-        Restart-And-Resume $script "Install"
-    }
+    Write-Host "System will be rebooting right now"
+    Restart-And-Resume $script "Install"
 }
 
-if (!Should-Run-Step "Prepare"){
+if ($True){
     $adminpassword = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminpassword).adminpassword
     $adminusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name adminusername).adminusername
     $svcusername= (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name svcusername).svcusername 
@@ -137,41 +152,6 @@ if (!Should-Run-Step "Prepare"){
     $domain=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domain).domain
     $domainsuffix=(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Unattended' -Name domainsuffix).domainsuffix
 }
-if (Should-Run-Step "Join")
-{
-    log "Joining domain"
-    log($domain)
-    log($domainsuffix)
-    $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
-    $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
-    Write-Host "Joining Active Directory"
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-    New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value $adminusername
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultPassword -Value $adminpassword
-    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value $domain
-
-    $wmi = Get-WmiObject win32_networkadapterconfiguration -filter "ipenabled = 'true'"
-    $wmi.SetDNSServerSearchOrder($dnsip)
-
-    Add-Computer -Credential $creds -DomainName $domain"."$domainsuffix -f
-    if (!$?) {
-        log($domain)
-        log($domainsuffix)
-        $errorMessage = ($error[0] | out-string)
-        log "Add to domain failed"
-        log $errorMessage
-        throw "AD Controller failed to install"
-    }
-    log "Joined domain"
-
-    Write-Host "System will be rebooting right now"
-    Restart-And-Resume $script "Install"
-}
-
 
 if (Should-Run-Step "Install")
 {
@@ -208,7 +188,10 @@ if (Should-Run-Step "Install")
     $PARAMS+="/SQLSVCSTARTUPTYPE=Automatic " #specifies startup type of sql server instance service
     $PARAMS+="/NPENABLED=1 " #enables named pipes protocol
     $PARAMS+="/TCPENABLED=1 /ERRORREPORTING=1" #enables tcp protocol
-    Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS
+
+    $secpasswd = ConvertTo-SecureString $adminpassword -AsPlainText -Force
+    $creds = New-Object System.Management.Automation.PSCredential ($adminusername , $secpasswd)
+    Start-Process -Wait -FilePath $setupPath -ArgumentList $PARAMS -Credential $creds
     if (!$?) {
         $errorMessage = ($error[0] | out-string)
         log "SQL install"
@@ -216,12 +199,6 @@ if (Should-Run-Step "Install")
         throw "SQL failed to install"
     }
     log "Stop Sql Server 2012 install"
-    Write-Host "System will be rebooting right now"
-    Restart-And-Resume $script "Completing"
-}
-
-if (Should-Run-Step "Completing")
-{
     Write-Host "Completing Sql Server 2012 Installation"
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 0
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultUserName -Value ""
@@ -229,6 +206,7 @@ if (Should-Run-Step "Completing")
     Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name DefaultDomainName -Value ""
     Remove-Item -Path Registry::HKLM\SOFTWARE\Unattended
 }
+
 
 Wait-For-Keypress "Sql Server 2012 installation completed, press any key to exit ..."
 
