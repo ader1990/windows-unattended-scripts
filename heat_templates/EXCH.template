@@ -1,30 +1,7 @@
 {
     "Description": "MS Exchange Server 2013 Deployment",
     "HeatTemplateVersion": "2013-05-23",
-    "Mappings": {
-        "Flavor2Arch": {
-            "m1.large": {
-                "Arch": "64"
-            },
-            "m1.medium": {
-                "Arch": "64"
-            },
-            "m1.small": {
-                "Arch": "64"
-            },
-            "m1.sminy": {
-                "Arch": "64"
-            },
-            "m1.xlarge": {
-                "Arch": "64"
-            }
-        },
-        "VersionArch2Image": {
-            "WS12R2": {
-                "64": "Windows Server 2012 R2 Std Eval VHD"
-            }
-        }
-    },
+    
     "Parameters": {
         "AdministratorUsername": {
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
@@ -43,6 +20,15 @@
             "MinLength": "8",
             "Type": "String"
         },
+        "DomainNetbiosName": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*", 
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.", 
+            "Default": "cloudbase", 
+            "Description": "The Netbios domain name", 
+            "MaxLength": "15", 
+            "MinLength": "1", 
+            "Type": "String"
+        }, 
         "LocalAdministratorUsername": {
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
@@ -116,6 +102,32 @@
             "Type": "String"
         }
     },
+    
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    },
+    
     "Resources": {
         "MSEXCH2013": {
             "Properties": {
@@ -152,7 +164,8 @@
                 "user_data": {
                     "Fn::Base64": {
                         "Fn::Join": [
-                            "",
+                            "", 
+                            ["SignalURL=", { "Ref" : "myWaitHandle" } ],
                             [
                                 "#ps1_sysnative\n",
                                 "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
@@ -229,6 +242,7 @@
                                 "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultUserName -Value $dcusername\n",
                                 "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultPassword -Value $dcpassword\n",
                                 "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultDomainName -Value $domain\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoLogonCount -Value 1 -Type \"DWord\"\n",
                                 "}\n",
                                 "else\n",
                                 "{\n",
@@ -236,6 +250,9 @@
                                 "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /p /on:$domain\"\n",
                                 "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /pd\"\n",
                                 "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /mode:install /InstallWindowsComponents /r:mb,ca /MdbName:$DatabaseName\"\n",
+                                "Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name\"ConfigureExchange\"\n",
+                                "ADD-PSSnapin Microsoft.Exchange.Management.PowerShell.SnapIn\n",
+                                "New-SendConnector -Internet -Name \"Default Send Connector\" -AddressSpaces \"*\"\n",
                                 "if (!$?) {\n",
                                 "throw \"MS Exchange Server 2013 installation failed.\"\n",
                                 "}\n",
@@ -247,10 +264,23 @@
             },
             "Type": "OS::Nova::Server"
         },
+         
+      "ADWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+      },
+
+    "ADWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "ADDC",
+      "Properties" : {
+        "Handle" : {"Ref" : "ADWaitHandle"},
+        "Timeout" : "3600"
+      }
+    },
         "attachment": {
             "Properties": {
                 "instance_uuid": {
-                    "Ref": "MSSQLSERVER2012"
+                    "Ref": "MSEXCHANGE2013"
                 },
                 "mountpoint": "/dev/sdb",
                 "volume_id": {
@@ -283,6 +313,82 @@
                     "Ref": "PrivateNetId"
                 }
             },
+            "Type": "OS::Neutron::Port"
+        }
+        
+        "ADDC": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                }, 
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image", 
+                        {
+                            "Ref": "WindowsVersion"
+                        }, 
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch", 
+                                {
+                                    "Ref": "Flavor"
+                                }, 
+                                "Arch"
+                            ]
+                        }
+                    ]
+                }, 
+                "key_name": {
+                    "Ref": "KeyName"
+                }, 
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ], 
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "", 
+                            [
+                                "#ps1_sysnative\n", 
+                                "$ErrorActionPreference = 'Stop'\n", 
+                                "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools\n", 
+                                "$user = [ADSI]'WinNT://./Administrator'\n", 
+                                "# Disable user\n", 
+                                "#$user.userflags = 2\n", 
+                                "#$user.SetInfo()\n", 
+                                "$user.SetPassword('", { "Ref": "AdministratorPassword"}, "')\n", 
+                                "Import-Module ADDSDeployment\n", 
+                                "$safeModePwd = (ConvertTo-SecureString '", {"Ref": "AdministratorPassword"}, "' -AsPlainText -Force)\n", 
+                                "Install-ADDSForest -DomainName '", {"Ref": "DomainName"}, "' -DomainNetbiosName '", {"Ref": "DomainNetbiosName"}, "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force\n"
+                            ]
+                        ]
+                    }
+                }
+            }, 
+            "Type": "OS::Nova::Server"
+        }, 
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": { "Ref" : "PublicNetId" }, 
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            }, 
+            "Type": "OS::Neutron::FloatingIP"
+        }, 
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": { "Ref" : "PrivateSubnetId"}
+                    }
+                ], 
+                "network_id": { "Ref" : "PrivateNetId"}
+            }, 
             "Type": "OS::Neutron::Port"
         }
     }
