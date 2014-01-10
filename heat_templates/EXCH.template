@@ -1,0 +1,277 @@
+{
+    "Description": "MS Exchange Server 2013 Deployment",
+    "HeatTemplateVersion": "2013-05-23",
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    },
+    "Parameters": {
+        "AdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The Domain Administrator username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "AdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The Domain Administrator password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "LocalAdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "administrator",
+            "Description": "The local administrator account",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "DatabaseName": {
+            "Description": "Exchange Mailbox Database Name",
+            "Default": "exchange2013_db1",
+            "Type": "String"
+        },
+        "IsoSetupPath": {
+            "Description": "The path to the sql server 2012 iso file",
+            "Default":"E:\\SW_DVD5_Exchange_Svr_2013_MultiLang_Std_Ent_MLF_X18-54275.iso",
+            "Type": "String"
+        },
+        "DomainName": {
+            "Default": "cloudbase",
+            "Description": "The active directory domain name",
+            "Type": "String"
+        },
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid flavor.",
+            "Description": "",
+            "Type": "String"
+        },
+        "KeyName": {
+            "Description": "Name of an existing keypair to enable SSH access to the instances",
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "Must be a valid subnet id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "Subnet private id",
+            "Type": "String"
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "Must be a valid volume id.",
+            "Default": "b9361bfa-b0d8-4bc8-8e57-1b7a9d8266de",
+            "Description": "Volume id",
+            "Type": "String"
+        },
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "MSEXCH2013": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                },
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "Flavor"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "key_name": {
+                    "Ref": "KeyName"
+                },
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ],
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$adminusername = \"",
+                                {
+                                    "Ref": "AdministratorUsername"
+                                },
+                                "\"\n",
+                                "$adminpassword = \"",
+                                {
+                                    "Ref": "AdministratorPassword"
+                                },
+                                "\"\n",
+                                "$LocalAdministratorUsername = \"",
+                                {
+                                    "Ref": "LocalAdministratorUsername"
+                                },
+                                "\"\n",
+                                "$DatabaseName = \"",
+                                {
+                                    "Ref": "DatabaseName"
+                                },
+                                "\"\n",
+                                "$setupPath = \"",
+                                {
+                                    "Ref": "IsoSetupPath"
+                                },
+                                "\"\n",
+                                "$domain = \"",
+                                {
+                                    "Ref": "DomainName"
+                                },
+                                "\"\n",
+                                "\n",
+                                "$iso = Mount-DiskImage -PassThru $setupPath\n",
+                                "$isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + \":\\setup.exe\"\n",
+                                "\n",
+                                "Write-Host \"Installing Exchange Server 20123\"\n",
+                                "$hostname = hostname\n",
+                                "#using old local administrator account\n",
+                                "$localadmin = [ADSI]'WinNT://./$LocalAdministratorUsername'\n",
+                                "$ascii=$NULL;\n",
+                                "For ($a=48;$a –le 122;$a++) {$ascii+=,[char][byte]$a }\n",
+                                "$tempPassword = \"\"\n",
+                                "$length = 15\n",
+                                "for ($loop=1; $loop –le $length; $loop++) {\n",
+                                "$tempPassword+=($alphabet | GET-RANDOM)\n",
+                                "}\n",
+                                "$localadmin.SetPassword($tempPassword)\n",
+                                "netdom join $env:computername /Domain:cloudbase /UserD:Administrator /PasswordD:$adminpassword /UserO:$LocalAdministratorUsername /PasswordO:$tempPassword\n",
+                                "if (!$?) {\n",
+                                "throw \"Failed to join Active Directory Domain.\"\n",
+                                "}\n",
+                                "$secpasswd = ConvertTo-SecureString "FontoMarco1982!" -AsPlainText -Force\n",
+                                "$DCcreds = New-Object System.Management.Automation.PSCredential (\"$domain\$adminusername\" , $secpasswd)\n",
+                                "Install-WindowsFeature RSAT-ADDS, AS-HTTP-Activation, Desktop-Experience, NET-Framework-45-Features, RPC-over-HTTP-proxy, RSAT-Clustering, RSAT-Clustering-CmdInterface, Web-Mgmt-Console, WAS-Process-Model, Web-Asp-Net45, Web-Basic-Auth, Web-Client-Auth, Web-Digest-Auth, Web-Dir-Browsing, Web-Dyn-Compression, Web-Http-Errors, Web-Http-Logging, Web-Http-Redirect, Web-Http-Tracing, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Lgcy-Mgmt-Console, Web-Metabase, Web-Mgmt-Console, Web-Mgmt-Service, Web-Net-Ext45, Web-Request-Monitor, Web-Server, Web-Stat-Compression, Web-Static-Content, Web-Windows-Auth, Web-WMI, Windows-Identity-Foundation\n",
+                                "$temp = \"c:\\Windows\\Temp\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/0/A/2/0A28BBFA-CBFA-4C03-A739-30CCA5E21659/FilterPack64bit.exe\" , \"$temp\\FilterPack64bit.exe\")\n",
+                                "Start-Process -Wait \"$temp\\FilterPack64bit.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\FilterPack64bit.exe\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/A/A/3/AA345161-18B8-45AE-8DC8-DA6387264CB9/filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\" , \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\")\n",
+                                "Start-Process -Wait \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/2/C/4/2C47A5C1-A1F3-4843-B9FE-84C0032C61EC/UcmaRuntimeSetup.exe\" , \"$temp\\UcmaRuntimeSetup.exe\")\n",
+                                "Start-Process -Wait \"$temp\\UcmaRuntimeSetup.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\UcmaRuntimeSetup.exe\"\n",
+                                "\n",
+                                "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /ps\"\n",
+                                "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /p /on:$domain\"\n",
+                                "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /pd\"\n",
+                                "Start-Process -Credential $DCcreds -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /mode:install /r:mb,ca /MdbName:$DatabaseName\"\n",
+                                "if (!$?) {\n",
+                                "throw \"MS Exchange Server 2013 installation failed.\"\n",
+                                "}\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "OS::Nova::Server"
+        },
+        "attachment": {
+            "Properties": {
+                "instance_uuid": {
+                    "Ref": "MSSQLSERVER2012"
+                },
+                "mountpoint": "/dev/sdb",
+                "volume_id": {
+                    "Ref": "MediaDeviceVolumeId"
+                }
+            },
+            "Type": "OS::Cinder::VolumeAttachment"
+        },
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": {
+                    "Ref": "PublicNetId"
+                },
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            },
+            "Type": "OS::Neutron::FloatingIP"
+        },
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": {
+                            "Ref": "PrivateSubnetId"
+                        }
+                    }
+                ],
+                "network_id": {
+                    "Ref": "PrivateNetId"
+                }
+            },
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}
