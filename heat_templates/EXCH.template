@@ -294,6 +294,7 @@
                                 "if (!$?) {\n",
                                 "throw \"MS Exchange Server 2013 installation failed.\"\n",
                                 "}\n",
+                                "}\n",
                                 "\n"
                             ]
                         ]
